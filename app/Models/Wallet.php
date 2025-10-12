@@ -16,6 +16,7 @@ class Wallet extends Model
         'name',
         'initial_balance',
         'icon',
+        'currency'
     ];
 
     /**

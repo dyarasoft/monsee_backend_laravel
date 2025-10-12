@@ -159,31 +159,41 @@ class AuthController extends Controller
         return Socialite::driver('google')->stateless()->redirect();
     }
 
-    public function handleGoogleCallback()
-    {
-        try {
-            $googleUser = Socialite::driver('google')->stateless()->user();
+    public function handleGoogleCallback(Request $request)
+{
+    try {
+        // Validasi request, pastikan 'token' ada
+        $request->validate([
+            'token' => 'required',
+        ]);
 
-            $user = User::updateOrCreate(
-                ['google_id' => $googleUser->id],
-                [
-                    'name' => $googleUser->name,
-                    'email' => $googleUser->email,
-                    'password' => null, // No password
-                ]
-            );
+        // Ambil pengguna dari Google menggunakan token
+        $googleUser = Socialite::driver('google')->userFromToken($request->token);
 
-            $token = $user->createToken('auth_token')->plainTextToken;
+        // Cari atau buat pengguna baru di database Anda
+        $user = User::updateOrCreate(
+            ['email' => $googleUser->getEmail()],
+            [
+                'name' => $googleUser->getName(),
+                'google_id' => $googleUser->getId(),
+                'avatar' => $googleUser->getAvatar(),
+            ]
+        );
+        
+        // Buat token Sanctum untuk pengguna
+        $token = $user->createToken('auth_token')->plainTextToken;
 
-            // This part would need to be adapted to return the token to a web frontend.
-            return response()->json([
-                'access_token' => $token,
-                'token_type' => 'Bearer',
-                'user' => $user,
-            ]);
-        } catch (\Exception $e) {
-            return $this->error(500, 'Something went wrong with Google authentication.');
-        }
+        // Kirim response sukses beserta token
+        return response()->json([
+            'access_token' => $token,
+            'token_type' => 'Bearer',
+            'user' => $user,
+        ]);
+
+    } catch (\Exception $e) {
+        // Kirim response error jika terjadi masalah
+        return response()->json(['error' => 'Invalid Google token or login failed.'], 401);
     }
+}
 }
 
