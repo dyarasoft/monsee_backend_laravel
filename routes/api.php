@@ -1,12 +1,12 @@
 <?php
 
-use App\Http\Controllers\Api\V1\AuthController;
-use App\Http\Controllers\Api\V1\BudgetController;
-use App\Http\Controllers\Api\V1\CategoryController;
-use App\Http\Controllers\Api\V1\ReportController;
-use App\Http\Controllers\Api\V1\TransactionController;
-use App\Http\Controllers\Api\V1\UserController;
-use App\Http\Controllers\Api\V1\WalletController;
+use App\Http\Controllers\Api\V1\App\AuthController;
+use App\Http\Controllers\Api\V1\App\BudgetController;
+use App\Http\Controllers\Api\V1\App\CategoryController;
+use App\Http\Controllers\Api\V1\App\ReportController;
+use App\Http\Controllers\Api\V1\App\TransactionController;
+use App\Http\Controllers\Api\V1\App\UserController;
+use App\Http\Controllers\Api\V1\App\WalletController;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -18,13 +18,10 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::prefix('v1')->group(function () {
-    // === AUTHENTICATION ===
+
+    // === ROUTE For Admin === //
     Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:6,1');
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:6,1');
-    Route::post('/auth/google/login', [AuthController::class, 'loginWithGoogle'])->middleware('throttle:6,1');
-
-    // Guest Features
-    Route::get('/categories/public', [CategoryController::class, 'publicIndex']);
 
     // === EMAIL VERIFICATION ===
     Route::get('/email/verify/{id}/{hash}', function (EmailVerificationRequest $request) {
@@ -40,21 +37,27 @@ Route::prefix('v1')->group(function () {
         return response()->json(['message' => 'Verification link sent!']);
     })->middleware(['auth:sanctum', 'throttle:6,1'])->name('verification.send');
 
+    // === ROUTE For App === //
+    
+    Route::post('/app/auth/google', [AuthController::class, 'loginWithGoogle'])->middleware('throttle:6,1');
 
+    // Guest Features
+    Route::get('/app/categories/public', [CategoryController::class, 'publicIndex']);
+
+    
     // === PROTECTED ROUTES (Requires Authentication) ===
-    Route::middleware('auth:sanctum')->group(function () {
+    Route::middleware('auth:sanctum')->prefix('app')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
-        Route::get('/profile', [AuthController::class, 'profile']);
+        Route::get('user/profile', [AuthController::class, 'profile']);
 
-        // Anda bisa menambahkan middleware 'verified' di sini untuk melindungi route
-        // Contoh: Route::apiResource('wallets', WalletController::class)->middleware('verified');
+     
 
         Route::post('/user/increase-wallet-limit', [UserController::class, 'increaseWalletLimit']);
 
         Route::apiResource('wallets', WalletController::class);
         Route::apiResource('categories', CategoryController::class);
         Route::apiResource('transactions', TransactionController::class)->except(['index']);
-        Route::get('transactions', [TransactionController::class, 'index']); // Custom index route
+        Route::get('transactions', [TransactionController::class, 'index']); 
         Route::apiResource('budgets', BudgetController::class);
 
         // Reports

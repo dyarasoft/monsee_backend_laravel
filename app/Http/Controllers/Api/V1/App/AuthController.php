@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Api\V1;
+namespace App\Http\Controllers\Api\V1\App;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
@@ -28,10 +28,10 @@ class AuthController extends Controller
         if ($existingUser) {
             // Jika user ada & punya google_id (tapi tidak punya password), berarti mendaftar via Google
             if ($existingUser->google_id && is_null($existingUser->password)) {
-                return $this->error(409, 'This email is registered with a Google account. Please log in using Google.');
+                return $this->error(409, '', 'This email is registered with a Google account. Please log in using Google.');
             }
             // Jika user ada & punya password, berarti pendaftaran duplikat biasa
-            return $this->error(409, 'An account with this email already exists. Please log in.');
+            return $this->error(409, '', 'An account with this email already exists. Please log in.');
         }
 
         // Jika tidak ada user, lanjutkan proses registrasi
@@ -46,7 +46,7 @@ class AuthController extends Controller
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
-        return $this->success(201, 'Registration successful. A verification link has been sent to your email.', [
+        return $this->success(201, '', 'Registration successful. A verification link has been sent to your email.', [
             'access_token' => $token,
             'token_type' => 'Bearer',
             'user' => $user
@@ -64,22 +64,22 @@ class AuthController extends Controller
         $user = User::where('email', $validated['email'])->first();
 
         if (!$user) {
-            return $this->error(404, 'Account not found. Please check your email.');
+            return $this->error(404, '', 'Account not found. Please check your email.');
         }
         
         // Cek jika akun hanya punya google_id (tidak punya password)
         if (is_null($user->password) && $user->google_id) {
-            return $this->error(401, 'This account was created using Google. Please log in with Google.');
+            return $this->error(401, '', 'This account was created using Google. Please log in with Google.');
         }
 
         // Check password
         if (!Hash::check($validated['password'], $user->password)) {
-            return $this->error(401, 'Wrong password. Please try again.');
+            return $this->error(401, '', 'Wrong password. Please try again.');
         }
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
-        return $this->success(200, 'Login successful.', [
+        return $this->success(200, '', 'Login successful.', [
             'access_token' => $token,
             'token_type' => 'Bearer',
             'user' => $user
@@ -89,7 +89,7 @@ class AuthController extends Controller
     public function logout(Request $request)
     {
         $request->user()->currentAccessToken()->delete();
-        return $this->success(200, 'Logout successful.');
+        return $this->success(200, '', 'Logout successful.');
     }
 
     /**
@@ -99,7 +99,7 @@ class AuthController extends Controller
      */
     public function profile()
     {
-        return $this->success(200, 'User data retrieved successfully.', Auth::user());
+        return $this->success(200, '', 'User data retrieved successfully.', Auth::user());
     }
 
     /**
@@ -142,13 +142,13 @@ class AuthController extends Controller
 
             $token = $user->createToken('auth_token')->plainTextToken;
 
-            return $this->success(200, 'Google login successful.', [
+            return $this->success(200, 'resp_msg_google_login_successful', 'Google login successful.', [
                 'access_token' => $token,
                 'token_type' => 'Bearer',
                 'user' => $user,
             ]);
         } catch (\Exception $e) {
-            return $this->error(401, 'Invalid Google token or login failed.');
+            return $this->error(401, 'resp_msg_login_failed', 'Invalid Google token or login failed.');
         }
     }
 

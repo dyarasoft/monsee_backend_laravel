@@ -12,10 +12,11 @@ trait ApiResponser
      * @param  object|array  $data
      * @return \Illuminate\Http\JsonResponse
      */
-    protected function success(int $statusCode, ?string $message = null, object|array $data = [])
+    protected function success(int $statusCode, ?string $message_code, ?string $message = null, object|array $data = [])
     {
         return response()->json([
             'status_code' => $statusCode,
+            'message_code' => $message_code,
             'message' => $message,
             'data' => $data,
         ], $statusCode);
@@ -29,10 +30,11 @@ trait ApiResponser
      * @param  object|array  $data
      * @return \Illuminate\Http\JsonResponse
      */
-    protected function error(int $statusCode, ?string $message = null, object|array $data = [])
+    protected function error(int $statusCode, ?string $message_code, ?string $message = null, object|array $data = [])
     {
         return response()->json([
             'status_code' => $statusCode,
+             'message_code' => $message_code,
             'message' => $message,
             'data' => $data,
         ], $statusCode);

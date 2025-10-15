@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Api\V1;
+namespace App\Http\Controllers\Api\V1\App;
 
 use App\Http\Controllers\Controller;
 use App\Models\Transaction;
@@ -53,6 +53,7 @@ class TransactionController extends Controller
 
         return response()->json([
             'status_code' => 200,
+            'message_code' => 'resp_msg_transactions_retrieved_successfully',
             'message' => 'Transactions retrieved successfully.',
             'data' => [
                 'transactions' => $transactions,
@@ -80,6 +81,7 @@ class TransactionController extends Controller
 
         return response()->json([
             'status_code' => 201,
+            'message_code' => 'resp_msg_transaction_created_successfully',
             'message' => 'Transaction created successfully.',
             'data' => $transaction
         ], 201);

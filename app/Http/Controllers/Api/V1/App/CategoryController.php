@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Api\V1;
+namespace App\Http\Controllers\Api\V1\App;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
@@ -19,7 +19,7 @@ class CategoryController extends Controller
             ->orWhere('user_id', Auth::id())
             ->get();
             
-        return $this->success(200, 'Categories retrieved successfully.', $categories);
+        return $this->success(200, 'resp_msg_categories_retrieved_successfully', 'Categories retrieved successfully.', $categories);
     }
 
     /**
@@ -28,7 +28,7 @@ class CategoryController extends Controller
     public function publicIndex()
     {
         $publicCategories = Category::whereNull('user_id')->get();
-        return $this->success(200, 'Public categories retrieved successfully.', $publicCategories);
+        return $this->success(200, 'resp_msg_categories_retrieved_successfully', 'Public categories retrieved successfully.', $publicCategories);
     }
 
     public function store(Request $request)
@@ -40,14 +40,14 @@ class CategoryController extends Controller
 
         $category = Auth::user()->categories()->create($validated);
 
-        return $this->success(201, 'Category created successfully.', $category);
+        return $this->success(201, 'resp_msg_category_created_successfully', 'Category created successfully.', $category);
     }
 
     public function update(Request $request, Category $category)
     {
         // Pastikan hanya pemilik kategori yang bisa mengedit
         if (Auth::id() !== $category->user_id) {
-            return $this->error(403, "You don't have permission to update this category.");
+            return $this->error(403, 'resp_msg_category_update_failed', "You don't have permission to update this category.");
         }
 
         $validated = $request->validate([
@@ -57,21 +57,21 @@ class CategoryController extends Controller
 
         $category->update($validated);
         
-        return $this->success(200, 'Category updated successfully.', $category);
+        return $this->success(200, 'resp_msg_category_update_successfully', 'Category updated successfully.', $category);
     }
 
     public function destroy(Category $category)
     {
         // Pastikan hanya pemilik kategori yang bisa menghapus
         if (Auth::id() !== $category->user_id) {
-            return $this->error(403, "You don't have permission to delete this category.");
+            return $this->error(403, 'resp_msg_category_delete_failed', "You don't have permission to delete this category.");
         }
 
         // Pengecekan transaksi dihapus karena sudah menggunakan soft delete.
         // Data historis akan tetap aman.
         $category->delete();
         
-        return $this->success(200, 'Category deleted successfully.');
+        return $this->success(200, 'resp_msg_category_delete_successfully', 'Category deleted successfully.');
     }
 }
 
