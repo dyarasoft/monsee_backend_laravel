@@ -17,10 +17,9 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->string('name');
-            $table->decimal('initial_balance', 15, 2)->default(0);
             $table->string('icon');
             $table->timestamps();
-            $table->softDeletes(); // <-- DITAMBAHKAN
+            $table->softDeletes();
         });
     }
 

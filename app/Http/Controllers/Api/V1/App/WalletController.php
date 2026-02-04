@@ -38,8 +38,7 @@ class WalletController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'icon' => 'required|string|max:255',
-            'currency' => 'required|string|max:10'
+            'icon' => 'required|string|max:255'
         ]);
 
         $wallet = Auth::user()->wallets()->create($validated);
@@ -100,8 +99,7 @@ class WalletController extends Controller
 
         $validated = $request->validate([
             'name' => 'sometimes|required|string|max:255',
-            'icon' => 'sometimes|required|string|max:255',
-            'currency' => $request->currency
+            'icon' => 'sometimes|required|string|max:255'
         ]);
 
         $wallet->update($validated);

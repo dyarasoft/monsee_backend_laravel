@@ -122,6 +122,18 @@ class AuthController extends Controller
             // Cari user berdasarkan email terlebih dahulu
             $user = User::where('email', $userEmail)->first();
 
+            if ($user && $user->trashed()) {
+            return response()->json([
+                'status_code' => 403,
+                'message' => 'Akun Anda telah dinonaktifkan.',
+                'data' => [
+                    'is_active' => false,
+                    'deleted_at' => $user->deleted_at,
+                    'deleted_reason' => $user->deleted_reason, // Tampilkan alasan
+                ]
+            ], 403);
+        }
+
             if ($user) {
                 // Jika user ada, tautkan google_id nya jika belum ada
                 if (is_null($user->google_id)) {
@@ -194,6 +206,31 @@ class AuthController extends Controller
         // Kirim response error jika terjadi masalah
         return response()->json(['error' => 'Invalid Google token or login failed.'], 401);
     }
+}
+
+public function deactivateAccount(Request $request)
+{
+    $request->validate([
+        'reason' => 'required|string|max:255',
+    ]);
+
+    $user = Auth::user();
+    
+    $user->update([
+        'deleted_by'     => $user->id,        
+        'deleted_reason' => $request->reason,
+    ]);
+
+
+    $user->tokens()->delete();
+
+    $user->delete(); 
+   
+
+    return response()->json([
+        'status_code' => 200,
+        'message'     => 'Account deactivated successfully.',
+    ]);
 }
 }
 

@@ -17,13 +17,15 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('email')->unique();
-            $table->timestamp('email_verified_at')->nullable(); // Untuk verifikasi email
-            $table->string('password')->nullable(); // Nullable untuk Google login
+            $table->timestamp('email_verified_at')->nullable();
+            $table->string('password')->nullable();
             $table->string('google_id')->nullable()->unique();
             $table->integer('wallet_limit')->default(1);
             $table->rememberToken();
+            $table->integer('deleted_by')->nullable();
+            $table->string('deleted_reason')->nullable();
             $table->timestamps();
-            $table->softDeletes(); // Untuk deaktivasi/penghapusan akun
+            $table->softDeletes();
         });
     }
 

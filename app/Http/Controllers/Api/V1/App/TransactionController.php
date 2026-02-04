@@ -7,6 +7,7 @@ use App\Models\Transaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class TransactionController extends Controller
 {
@@ -107,29 +108,42 @@ class TransactionController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Transaction $transaction)
+   public function update(Request $request, Transaction $transaction)
     {
-        // Ensure the user can only update their own transactions
+        
         if ($transaction->user_id !== auth()->id()) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        $request->validate([
-            'category_id' => 'sometimes|required|integer|exists:categories,id',
-            'amount' => 'sometimes|required|numeric|min:0',
+   
+        $validated = $request->validate([
+            'wallet_id'   => [
+                'sometimes', 
+                'integer', 
+      
+                Rule::exists('wallets', 'id')->where(function ($query) {
+                    return $query->where('user_id', auth()->id());
+                }),
+            ],
+            'category_id' => 'sometimes|integer|exists:categories,id',
+            'type'        => 'sometimes|in:income,expense',
+            'amount'      => 'sometimes|numeric|min:0',
             'description' => 'nullable|string|max:255',
-            'date' => 'sometimes|required|date_format:Y-m-d',
+            'date'        => 'sometimes|date_format:Y-m-d',
         ]);
 
-        $transaction->update($request->all());
+      
+        $transaction->update($validated);
+
 
         return response()->json([
             'status_code' => 200,
+            'message_code' => 'resp_msg_transaction_deleted_successfully',
             'message' => 'Transaction updated successfully.',
-            'data' => $transaction
+            'data' => $transaction->load(['wallet', 'category']) 
         ]);
     }
-
+    
     /**
      * Remove the specified resource from storage.
      */
@@ -144,7 +158,26 @@ class TransactionController extends Controller
 
         return response()->json([
             'status_code' => 200,
+            'message_code' => 'resp_msg_transaction_deleted_successfully',
             'message' => 'Transaction deleted successfully.',
+        ]);
+    }
+
+
+    public function recent()
+    {
+        $transactions = Transaction::where('user_id', auth()->id())
+            ->with(['category', 'wallet']) // Eager load relasi agar icon/nama muncul
+            ->orderBy('date', 'desc')      // Prioritaskan tanggal transaksi
+            ->orderBy('created_at', 'desc') // Jika tanggal sama, urutkan berdasarkan waktu input
+            ->take(5)                     // Batasi 10 data saja
+            ->get();
+
+        return response()->json([
+            'status_code' => 200,
+            'message_code' => 'resp_msg_recent_transactions_retrieved_successfully',
+            'message' => 'Recent transactions retrieved successfully.',
+            'data' => $transactions
         ]);
     }
 }

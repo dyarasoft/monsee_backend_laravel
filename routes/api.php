@@ -49,6 +49,7 @@ Route::prefix('v1')->group(function () {
     Route::middleware('auth:sanctum')->prefix('app')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::get('user/profile', [AuthController::class, 'profile']);
+        Route::post('/user/deactivate', [AuthController::class, 'deactivateAccount']);
 
      
 
@@ -56,12 +57,13 @@ Route::prefix('v1')->group(function () {
 
         Route::apiResource('wallets', WalletController::class);
         Route::apiResource('categories', CategoryController::class);
+        Route::get('/transactions/recent', [TransactionController::class, 'recent']);
         Route::apiResource('transactions', TransactionController::class)->except(['index']);
         Route::get('transactions', [TransactionController::class, 'index']); 
         Route::apiResource('budgets', BudgetController::class);
 
         // Reports
-        Route::get('reports/summary', [ReportController::class, 'summary']);
+        Route::get('/reports/summary', [ReportController::class, 'summary']);
     });
 
     
