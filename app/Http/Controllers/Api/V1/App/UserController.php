@@ -24,5 +24,31 @@ class UserController extends Controller
             'new_limit' => $user->wallet_limit
         ]);
     }
+
+    public function deactivateAccount(Request $request)
+{
+    $request->validate([
+        'reason' => 'required|string|max:255',
+    ]);
+
+    $user = Auth::user();
+
+    
+    $user->update([
+        'deleted_by'     => $user->id,        // ID user itu sendiri
+        'deleted_reason' => $request->reason, // Alasan dari input
+    ]);
+
+
+    $user->tokens()->delete();
+
+    $user->delete(); 
+   
+
+    return response()->json([
+        'status_code' => 200,
+        'message'     => 'Account deactivated successfully.',
+    ]);
+}
 }
 

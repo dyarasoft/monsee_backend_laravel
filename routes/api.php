@@ -49,7 +49,7 @@ Route::prefix('v1')->group(function () {
     Route::middleware('auth:sanctum')->prefix('app')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::get('user/profile', [AuthController::class, 'profile']);
-        Route::post('/user/deactivate', [AuthController::class, 'deactivateAccount']);
+        Route::post('/user/deactivate', [UserController::class, 'deactivateAccount']);
 
      
 

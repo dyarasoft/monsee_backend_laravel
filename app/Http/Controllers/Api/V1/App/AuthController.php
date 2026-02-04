@@ -113,42 +113,45 @@ class AuthController extends Controller
         $validated = $request->validate([
             'token' => 'required|string',
         ]);
-
+        error_log('Google login attempt with token: ' . $validated['token']);
         try {
             $googleUser = Socialite::driver('google')->userFromToken($validated['token']);
             $userEmail = $googleUser->getEmail();
             $googleId = $googleUser->getId();
 
-            // Cari user berdasarkan email terlebih dahulu
-            $user = User::where('email', $userEmail)->first();
+            // PERBAIKAN: Gunakan withTrashed() untuk mencari user termasuk yang statusnya nonaktif
+            $user = User::withTrashed()->where('email', $userEmail)->first();
 
             if ($user && $user->trashed()) {
-            return response()->json([
-                'status_code' => 403,
-                'message' => 'Akun Anda telah dinonaktifkan.',
-                'data' => [
-                    'is_active' => false,
-                    'deleted_at' => $user->deleted_at,
-                    'deleted_reason' => $user->deleted_reason, // Tampilkan alasan
-                ]
-            ], 403);
-        }
+                return $this->error(403, 'resp_msg_account_deactivated', 'Your account has been deactivated.');
+                // return response()->json([
+                //     'status_code' => 403,
+                //     'message' => 'Akun Anda telah dinonaktifkan.',
+                //     'data' => [
+                //         'is_active' => false,
+                //         'deleted_at' => $user->deleted_at,
+                //         'deleted_reason' => $user->deleted_reason, 
+                //     ]
+                // ], 403);
+            }
 
             if ($user) {
-                // Jika user ada, tautkan google_id nya jika belum ada
+                // Jika user ada & aktif, tautkan google_id nya jika belum ada
                 if (is_null($user->google_id)) {
                     $user->google_id = $googleId;
-                    $user->email_verified_at = now(); // Anggap terverifikasi karena dari Google
+                    if (is_null($user->email_verified_at)) {
+                         $user->email_verified_at = now();
+                    }
                     $user->save();
                 }
             } else {
-                // Jika user tidak ada, buat user baru
+                // Jika user tidak ada (dan bukan soft delete), buat user baru
                 $user = User::create([
                     'name' => $googleUser->getName(),
                     'email' => $userEmail,
                     'google_id' => $googleId,
                     'email_verified_at' => now(),
-                    'password' => null, // Tidak perlu password
+                    'password' => null, 
                 ]);
             }
 
@@ -159,6 +162,7 @@ class AuthController extends Controller
                 'token_type' => 'Bearer',
                 'user' => $user,
             ]);
+
         } catch (\Exception $e) {
             return $this->error(401, 'resp_msg_login_failed', 'Invalid Google token or login failed.');
         }
@@ -206,31 +210,6 @@ class AuthController extends Controller
         // Kirim response error jika terjadi masalah
         return response()->json(['error' => 'Invalid Google token or login failed.'], 401);
     }
-}
-
-public function deactivateAccount(Request $request)
-{
-    $request->validate([
-        'reason' => 'required|string|max:255',
-    ]);
-
-    $user = Auth::user();
-    
-    $user->update([
-        'deleted_by'     => $user->id,        
-        'deleted_reason' => $request->reason,
-    ]);
-
-
-    $user->tokens()->delete();
-
-    $user->delete(); 
-   
-
-    return response()->json([
-        'status_code' => 200,
-        'message'     => 'Account deactivated successfully.',
-    ]);
 }
 }
 
