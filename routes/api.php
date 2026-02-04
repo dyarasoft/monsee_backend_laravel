@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\App\AuthController;
 use App\Http\Controllers\Api\V1\App\BudgetController;
 use App\Http\Controllers\Api\V1\App\CategoryController;
+use App\Http\Controllers\Api\V1\App\ConfigController;
 use App\Http\Controllers\Api\V1\App\ReportController;
 use App\Http\Controllers\Api\V1\App\TransactionController;
 use App\Http\Controllers\Api\V1\App\UserController;
@@ -44,6 +45,9 @@ Route::prefix('v1')->group(function () {
     // Guest Features
     Route::get('/app/categories/public', [CategoryController::class, 'publicIndex']);
 
+     // Configs
+        Route::get('/app/configs', [ConfigController::class, 'index']);
+
     
     // === PROTECTED ROUTES (Requires Authentication) ===
     Route::middleware('auth:sanctum')->prefix('app')->group(function () {
@@ -64,6 +68,8 @@ Route::prefix('v1')->group(function () {
 
         // Reports
         Route::get('/reports/summary', [ReportController::class, 'summary']);
+
+       
     });
 
     
