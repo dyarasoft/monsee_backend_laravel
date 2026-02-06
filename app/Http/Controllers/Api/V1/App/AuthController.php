@@ -1,0 +1,215 @@
+<?php
+
+namespace App\Http\Controllers\Api\V1\App;
+
+use App\Http\Controllers\Controller;
+use App\Models\User;
+use App\Traits\ApiResponser;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Laravel\Socialite\Facades\Socialite;
+
+class AuthController extends Controller
+{
+    use ApiResponser;
+
+    public function register(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email', // Aturan 'unique' dihapus untuk custom handling
+            'password' => 'required|string|confirmed|min:8',
+        ]);
+
+        // Cek manual apakah email sudah ada
+        $existingUser = User::where('email', $validated['email'])->first();
+
+        if ($existingUser) {
+            // Jika user ada & punya google_id (tapi tidak punya password), berarti mendaftar via Google
+            if ($existingUser->google_id && is_null($existingUser->password)) {
+                return $this->error(409, '', 'This email is registered with a Google account. Please log in using Google.');
+            }
+            // Jika user ada & punya password, berarti pendaftaran duplikat biasa
+            return $this->error(409, '', 'An account with this email already exists. Please log in.');
+        }
+
+        // Jika tidak ada user, lanjutkan proses registrasi
+        $user = User::create([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'password' => Hash::make($validated['password']),
+        ]);
+
+        // Kirim email verifikasi
+        $user->sendEmailVerificationNotification();
+
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        return $this->success(201, '', 'Registration successful. A verification link has been sent to your email.', [
+            'access_token' => $token,
+            'token_type' => 'Bearer',
+            'user' => $user
+        ]);
+    }
+
+    public function login(Request $request)
+    {
+        $validated = $request->validate([
+            'email' => 'required|string|email',
+            'password' => 'required|string',
+        ]);
+
+        // Check email
+        $user = User::where('email', $validated['email'])->first();
+
+        if (!$user) {
+            return $this->error(404, '', 'Account not found. Please check your email.');
+        }
+        
+        // Cek jika akun hanya punya google_id (tidak punya password)
+        if (is_null($user->password) && $user->google_id) {
+            return $this->error(401, '', 'This account was created using Google. Please log in with Google.');
+        }
+
+        // Check password
+        if (!Hash::check($validated['password'], $user->password)) {
+            return $this->error(401, '', 'Wrong password. Please try again.');
+        }
+
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        return $this->success(200, '', 'Login successful.', [
+            'access_token' => $token,
+            'token_type' => 'Bearer',
+            'user' => $user
+        ]);
+    }
+
+    public function logout(Request $request)
+    {
+        $request->user()->currentAccessToken()->delete();
+        return $this->success(200, '', 'Logout successful.');
+    }
+
+    /**
+     * Get the authenticated User.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function profile()
+    {
+        return $this->success(200, '', 'User data retrieved successfully.', Auth::user());
+    }
+
+    /**
+     * Handle login from Google Sign-In on mobile apps.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function loginWithGoogle(Request $request)
+    {
+        $validated = $request->validate([
+            'token' => 'required|string',
+        ]);
+        error_log('Google login attempt with token: ' . $validated['token']);
+        try {
+            $googleUser = Socialite::driver('google')->userFromToken($validated['token']);
+            $userEmail = $googleUser->getEmail();
+            $googleId = $googleUser->getId();
+
+            // PERBAIKAN: Gunakan withTrashed() untuk mencari user termasuk yang statusnya nonaktif
+            $user = User::withTrashed()->where('email', $userEmail)->first();
+
+            if ($user && $user->trashed()) {
+                return $this->error(403, 'resp_msg_account_deactivated', 'Your account has been deactivated.');
+                // return response()->json([
+                //     'status_code' => 403,
+                //     'message' => 'Akun Anda telah dinonaktifkan.',
+                //     'data' => [
+                //         'is_active' => false,
+                //         'deleted_at' => $user->deleted_at,
+                //         'deleted_reason' => $user->deleted_reason, 
+                //     ]
+                // ], 403);
+            }
+
+            if ($user) {
+                // Jika user ada & aktif, tautkan google_id nya jika belum ada
+                if (is_null($user->google_id)) {
+                    $user->google_id = $googleId;
+                    if (is_null($user->email_verified_at)) {
+                         $user->email_verified_at = now();
+                    }
+                    $user->save();
+                }
+            } else {
+                // Jika user tidak ada (dan bukan soft delete), buat user baru
+                $user = User::create([
+                    'name' => $googleUser->getName(),
+                    'email' => $userEmail,
+                    'google_id' => $googleId,
+                    'email_verified_at' => now(),
+                    'password' => null, 
+                ]);
+            }
+
+            $token = $user->createToken('auth_token')->plainTextToken;
+
+            return $this->success(200, 'resp_msg_google_login_successful', 'Google login successful.', [
+                'access_token' => $token,
+                'token_type' => 'Bearer',
+                'user' => $user,
+            ]);
+
+        } catch (\Exception $e) {
+            return $this->error(401, 'resp_msg_login_failed', 'Invalid Google token or login failed.');
+        }
+    }
+
+
+    // These methods below are for web-based flow, not used by mobile app.
+    public function redirectToGoogle()
+    {
+        return Socialite::driver('google')->stateless()->redirect();
+    }
+
+    public function handleGoogleCallback(Request $request)
+{
+    try {
+        // Validasi request, pastikan 'token' ada
+        $request->validate([
+            'token' => 'required',
+        ]);
+
+        // Ambil pengguna dari Google menggunakan token
+        $googleUser = Socialite::driver('google')->userFromToken($request->token);
+
+        // Cari atau buat pengguna baru di database Anda
+        $user = User::updateOrCreate(
+            ['email' => $googleUser->getEmail()],
+            [
+                'name' => $googleUser->getName(),
+                'google_id' => $googleUser->getId(),
+                'avatar' => $googleUser->getAvatar(),
+            ]
+        );
+        
+        // Buat token Sanctum untuk pengguna
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        // Kirim response sukses beserta token
+        return response()->json([
+            'access_token' => $token,
+            'token_type' => 'Bearer',
+            'user' => $user,
+        ]);
+
+    } catch (\Exception $e) {
+        // Kirim response error jika terjadi masalah
+        return response()->json(['error' => 'Invalid Google token or login failed.'], 401);
+    }
+}
+}
+
