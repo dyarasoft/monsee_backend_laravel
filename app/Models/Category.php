@@ -4,11 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes; // <-- DIIMPOR
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Category extends Model
 {
-    use HasFactory, SoftDeletes; // <-- DIGUNAKAN
+    use HasFactory, SoftDeletes;
 
     public $timestamps = false;
 
@@ -16,7 +16,6 @@ class Category extends Model
         'user_id',
         'name',
         'icon',
-        'color',
     ];
 
     /**
