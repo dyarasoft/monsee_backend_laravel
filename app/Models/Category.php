@@ -10,12 +10,11 @@ class Category extends Model
 {
     use HasFactory, SoftDeletes;
 
-    public $timestamps = false;
-
     protected $fillable = [
         'user_id',
         'name',
         'icon',
+        'type',
     ];
 
     public function user()

@@ -20,8 +20,8 @@ class ReportController extends Controller
     {
         // 1. Validasi Input
         $request->validate([
-            'start_date'   => 'required|date',
-            'end_date'     => 'required|date|after_or_equal:start_date',
+            'start_date'   => 'required|date_format:Y-m-d',
+            'end_date'     => 'required|date_format:Y-m-d|after_or_equal:start_date',
             'wallet_ids'   => 'nullable|array', 
             'wallet_ids.*' => 'integer|exists:wallets,id' 
         ]);
@@ -29,8 +29,9 @@ class ReportController extends Controller
         $user = Auth::user();
 
         // 2. Base Query
-        $query = $user->transactions()
-            ->whereBetween('date', [$request->start_date, $request->end_date]);
+            $query = $user->transactions()
+            ->whereDate('transactions.date', '>=', $request->start_date)
+            ->whereDate('transactions.date', '<=', $request->end_date);
         
         // 3. Filter Multiple Wallets
         if ($request->filled('wallet_ids')) {
@@ -39,15 +40,16 @@ class ReportController extends Controller
                 ->pluck('id')
                 ->toArray();
 
-            $query->whereIn('wallet_id', $validWalletIds);
+            $query->whereIn('transactions.wallet_id', $validWalletIds);
         }
 
-        // 4. Kalkulasi Summary Header (Income, Expense, Net)
-        $income  = (clone $query)->where('type', 'income')->sum('amount');
-        $expense = (clone $query)->where('type', 'expense')->sum('amount');
+        // 4. Calculation Summary Header (Income, Expense)
+        $income  = (clone $query)->where('transactions.type', 'income')->sum('amount');
+        $expense = (clone $query)->where('transactions.type', 'expense')->sum('amount');
 
-        // 5. Data untuk Donut Chart & Top Spending List
-        $expenseByCategory = (clone $query)->where('type', 'expense')
+        // 5. Data for Donut Chart & Top Spending List
+        $expenseByCategory = (clone $query)
+            ->where('transactions.type', 'expense') 
             ->join('categories', 'transactions.category_id', '=', 'categories.id')
             ->select(
                 'categories.id as category_id',
@@ -64,8 +66,9 @@ class ReportController extends Controller
                 return $item;
             });
 
-            // 6. Data untuk Wallet Trend (Income vs Expense per Wallet)
-           $incomeByCategory = (clone $query)->where('type', 'income')
+        // 6. Data for Wallet Trend (Income per Kategori - Optional/Logic check)
+        $incomeByCategory = (clone $query)
+            ->where('transactions.type', 'income')
             ->join('categories', 'transactions.category_id', '=', 'categories.id')
             ->select(
                 'categories.id as category_id',
@@ -78,13 +81,11 @@ class ReportController extends Controller
             ->get()
             ->map(function ($item) use ($income) {
                 $item->total_amount = (float) $item->total_amount;
-                // Hitung persentase terhadap total income
                 $item->percentage = $income > 0 ? round(($item->total_amount / $income) * 100, 2) : 0;
                 return $item;
             });
 
-
-            // 7. Data untuk Wallets Breakdown (List Wallet)
+        // 7. Data for Wallets Breakdown (List Wallet)
         $walletsBreakdown = (clone $query)
             ->join('wallets', 'transactions.wallet_id', '=', 'wallets.id')
             ->select(
@@ -94,7 +95,6 @@ class ReportController extends Controller
                 DB::raw("SUM(CASE WHEN transactions.type = 'income' THEN transactions.amount ELSE 0 END) as total_income"),
                 DB::raw("SUM(CASE WHEN transactions.type = 'expense' THEN transactions.amount ELSE 0 END) as total_expense")
             )
-            // Grouping harus menyertakan semua kolom select non-agregat
             ->groupBy('wallets.id', 'wallets.name', 'wallets.icon')
             ->get()
             ->map(function ($item) {
@@ -116,6 +116,7 @@ class ReportController extends Controller
             'summary' => [
                 'total_income'  => (float) $income,
                 'total_expense' => (float) $expense,
+                'net_balance'   => (float) ($income - $expense) 
             ],
             'income_by_category'  => $incomeByCategory,
             'expense_by_category' => $expenseByCategory,

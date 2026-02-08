@@ -74,7 +74,7 @@ class TransactionController extends Controller
             'type' => 'required|in:income,expense',
             'amount' => 'required|numeric|min:0',
             'description' => 'nullable|string|max:255',
-            'date' => 'required|date_format:Y-m-d',
+            'date' => 'required|date_format:Y-m-d H:i:s',
         ]);
 
         // Create a new transaction associated with the authenticated user
@@ -129,7 +129,7 @@ class TransactionController extends Controller
             'type'        => 'sometimes|in:income,expense',
             'amount'      => 'sometimes|numeric|min:0',
             'description' => 'nullable|string|max:255',
-            'date'        => 'sometimes|date_format:Y-m-d',
+            'date'        => 'required|date_format:Y-m-d H:i:s',
         ]);
 
       
