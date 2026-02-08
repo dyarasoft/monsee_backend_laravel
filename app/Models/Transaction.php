@@ -22,7 +22,7 @@ class Transaction extends Model
         'type',
         'amount',
         'description',
-        'date', // <-- Tambahkan 'date' di sini
+        'date',
     ];
 
     /**
