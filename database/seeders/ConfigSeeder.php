@@ -15,8 +15,8 @@ class ConfigSeeder extends Seeder
     public function run()
     {
         $settings = [
-            ['key' => 'version_android', 'value' => '1.0.0'],
-            ['key' => 'version_ios', 'value' => '1.0.0'],
+            ['key' => 'min_version_android', 'value' => '1.0.0'],
+            ['key' => 'min_version_ios', 'value' => '1.0.0'],
         ];
 
         foreach ($settings as $setting) {
