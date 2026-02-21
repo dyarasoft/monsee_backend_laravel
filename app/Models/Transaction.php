@@ -19,6 +19,7 @@ class Transaction extends Model
         'user_id',
         'wallet_id',
         'category_id',
+        'currency',
         'type',
         'amount',
         'description',
@@ -49,4 +50,3 @@ class Transaction extends Model
         return $this->belongsTo(Category::class);
     }
 }
-

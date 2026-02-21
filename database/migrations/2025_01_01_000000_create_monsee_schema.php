@@ -19,6 +19,7 @@ return new class extends Migration
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password')->nullable();
             $table->string('google_id')->nullable()->unique();
+            $table->boolean('is_premium')->default(false);
             $table->rememberToken();
             $table->integer('deleted_by')->nullable();
             $table->string('deleted_reason')->nullable();
@@ -48,10 +49,13 @@ return new class extends Migration
         });
 
         // 4. Wallets (Depends on Users)
-        Schema::create('wallets', function (Blueprint $table) {
+       Schema::create('wallets', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->string('name');
+            $table->string('category')->default('cash');
+            $table->string('currency', 3)->default('USD'); 
+            $table->decimal('initial_balance', 15, 2)->default(0);
             $table->string('icon');
             $table->timestamps();
             $table->softDeletes();
@@ -61,8 +65,10 @@ return new class extends Migration
         Schema::create('categories', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->nullable()->constrained()->onDelete('cascade');
+            $table->foreignId('parent_id')->nullable()->constrained('categories')->onDelete('cascade'); 
             $table->string('name');
             $table->string('icon');
+            $table->string('color', 20)->default('#4CAF50');
             $table->enum('type', ['income', 'expense'])->default('expense');
             $table->timestamps(); 
             $table->softDeletes();
@@ -75,12 +81,23 @@ return new class extends Migration
             $table->foreignId('wallet_id')->constrained()->onDelete('cascade');
             $table->foreignId('category_id')->constrained()->onDelete('cascade');
             
+            $table->string('currency', 3)->default('USD');
             $table->enum('type', ['income', 'expense']);
             $table->decimal('amount', 15, 2);
             $table->string('description')->nullable(); 
             
             $table->dateTime('date');
             $table->timestamps();
+        });
+
+        // 7. Daily Rates (For Currency Conversions)
+        Schema::create('daily_rates', function (Blueprint $table) {
+            $table->id();
+            $table->date('date');
+            $table->string('base_currency', 3)->default('USD');
+            $table->json('rates');
+            $table->timestamps();
+            $table->unique(['date', 'base_currency']); 
         });
     }
 
@@ -89,6 +106,7 @@ return new class extends Migration
      */
     public function down(): void
     {
+        Schema::dropIfExists('daily_rates');
         Schema::dropIfExists('transactions');
         Schema::dropIfExists('categories');
         Schema::dropIfExists('wallets');

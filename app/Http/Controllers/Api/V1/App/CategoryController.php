@@ -14,9 +14,17 @@ class CategoryController extends Controller
 
     public function index()
     {
-        // Get default categories and user's custom categories
-        $categories = Category::where('user_id', null)
-            ->orWhere('user_id', Auth::id())
+        // Ambil kategori utama (parent) milik user atau default sistem
+        $categories = Category::whereNull('parent_id')
+            ->where(function ($query) {
+                $query->whereNull('user_id')
+                      ->orWhere('user_id', Auth::id());
+            })
+            // Eager load subcategories dengan scope yang sama (hindari tarik sub milik user lain)
+            ->with(['subcategories' => function ($query) {
+                $query->whereNull('user_id')
+                      ->orWhere('user_id', Auth::id());
+            }])
             ->get();
             
         return $this->success(200, 'resp_msg_categories_retrieved_successfully', 'Categories retrieved successfully.', $categories);
@@ -27,7 +35,13 @@ class CategoryController extends Controller
      */
     public function publicIndex()
     {
-        $publicCategories = Category::whereNull('user_id')->get();
+        $publicCategories = Category::whereNull('parent_id')
+            ->whereNull('user_id')
+            ->with(['subcategories' => function ($query) {
+                $query->whereNull('user_id');
+            }])
+            ->get();
+
         return $this->success(200, 'resp_msg_categories_retrieved_successfully', 'Public categories retrieved successfully.', $publicCategories);
     }
 
@@ -35,8 +49,20 @@ class CategoryController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'icon' => 'nullable|string|max:255',
+            'icon' => 'required|string|max:255',
+            'color' => 'required|string|max:20', // <-- Validasi warna
+            'type' => 'required|in:income,expense',
+            'parent_id' => 'nullable|exists:categories,id',
         ]);
+
+        // Logika Inheritance (Pewarisan)
+        if (!empty($validated['parent_id'])) {
+            $parent = Category::find($validated['parent_id']);
+            if ($parent) {
+                $validated['type'] = $parent->type;
+                $validated['color'] = $parent->color; // <-- Sub-category memaksa mengikuti warna Parent
+            }
+        }
 
         $category = Auth::user()->categories()->create($validated);
 
@@ -45,19 +71,36 @@ class CategoryController extends Controller
 
     public function update(Request $request, Category $category)
     {
-        // Pastikan hanya pemilik kategori yang bisa mengedit
         if (Auth::id() !== $category->user_id) {
             return $this->error(403, 'resp_msg_category_update_failed', "You don't have permission to update this category.");
         }
 
         $validated = $request->validate([
             'name' => 'sometimes|required|string|max:255',
-            'icon' => 'sometimes|nullable|string|max:255',
+            'icon' => 'sometimes|required|string|max:255',
+            'color' => 'sometimes|required|string|max:20', // <-- Validasi warna
+            'type' => 'sometimes|required|in:income,expense',
+            'parent_id' => 'nullable|exists:categories,id',
         ]);
 
+        // Jika sub-kategori dipindah ke parent lain, ikuti parent baru
+        if (array_key_exists('parent_id', $validated) && !empty($validated['parent_id'])) {
+            $parent = Category::find($validated['parent_id']);
+            if ($parent) {
+                $validated['type'] = $parent->type;
+                $validated['color'] = $parent->color; // <-- Sub-category memaksa mengikuti warna Parent
+            }
+        }
+
         $category->update($validated);
+
+        // EXTRA: Jika yang diupdate ini adalah Parent Category, dan warnanya berubah, 
+        // maka update juga warna seluruh sub-kategori di bawahnya.
+        if (is_null($category->parent_id) && array_key_exists('color', $validated)) {
+            $category->subcategories()->update(['color' => $validated['color']]);
+        }
         
-        return $this->success(200, 'resp_msg_category_update_successfully', 'Category updated successfully.', $category);
+        return $this->success(200, 'resp_msg_category_update_successfully', 'Category updated successfully.', $category->load('subcategories'));
     }
 
     public function destroy(Category $category)
@@ -67,11 +110,14 @@ class CategoryController extends Controller
             return $this->error(403, 'resp_msg_category_delete_failed', "You don't have permission to delete this category.");
         }
 
-        // Pengecekan transaksi dihapus karena sudah menggunakan soft delete.
-        // Data historis akan tetap aman.
+        // Jika parent kategori ini di-delete, pastikan sub-kategori user ini juga ikut di-soft-delete.
+        // Anda dapat menambahkan ini agar sub-category tidak yatim (orphan).
+        if (is_null($category->parent_id)) {
+            $category->subcategories()->where('user_id', Auth::id())->delete();
+        }
+
         $category->delete();
         
         return $this->success(200, 'resp_msg_category_delete_successfully', 'Category deleted successfully.');
     }
 }
-
