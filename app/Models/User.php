@@ -24,6 +24,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'email',
         'password',
         'google_id',
+        'is_premium',
         'email_verified_at',
         'deleted_by',     
         'deleted_reason',
@@ -47,6 +48,7 @@ class User extends Authenticatable implements MustVerifyEmail
     protected $casts = [
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
+        'is_premium' => 'boolean',
     ];
 
     /**

@@ -17,15 +17,11 @@ class WalletController extends Controller
      *
      * @return \Illuminate\Http\JsonResponse
      */
-    public function index()
+   public function index()
     {
         $wallets = Auth::user()->wallets;
-        return response()->json([
-            'status_code' => 200,
-            'message_code' => 'resp_msg_wallets_retrieved_successfully',
-            'message' => 'Wallets retrieved successfully.',
-            'data' => $wallets
-        ]);
+        
+        return $this->success(200, 'resp_msg_wallets_retrieved_successfully', 'Wallets retrieved successfully.', $wallets);
     }
 
     /**
@@ -38,16 +34,14 @@ class WalletController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'category' => 'required|in:cash,bank,e-wallet,credit card,investment,other',
+            'currency' => 'required|string|max:3',
+            'initial_balance' => 'required|numeric',
             'icon' => 'required|string|max:255'
         ]);
 
         $wallet = Auth::user()->wallets()->create($validated);
-        return response()->json([
-            'status_code' => 201,
-            'message_code' => 'resp_msg_wallet_created_successfully',
-            'message' => 'Wallet created successfully.',
-            'data' => $wallet
-        ], 201);
+        return $this->success(201, 'resp_msg_wallet_created_successfully', 'Wallet created successfully.', $wallet);
 
     }
 
@@ -62,22 +56,11 @@ class WalletController extends Controller
         $wallet = Auth::user()->wallets()->find($id);
 
         if (!$wallet) {
-            return response()->json([
-                'status_code' => 404,
-                'message_code' => 'resp_msg_wallet_not_found',
-                'message' => 'Wallet not found.'
-            ]);
+            return $this->error(404, 'resp_msg_wallet_not_found', 'Wallet not found.');
         }
 
-        return response()->json([
-            'status_code' => 200,
-            'message_code' => 'resp_msg_wallet_details_retrieved_successfully',
-            'message' => 'Wallet details retrieved successfully.',
-            'data' => $wallet
-        ]);
-
+        return $this->success(200, 'resp_msg_wallet_details_retrieved_successfully', 'Wallet details retrieved successfully.', $wallet);
     }
-
     /**
      * Update the specified resource in storage.
      *
@@ -90,26 +73,20 @@ class WalletController extends Controller
         $wallet = Auth::user()->wallets()->find($id);
 
         if (!$wallet) {
-            return response()->json([
-                'status_code' => 404,
-                'message_code' => 'resp_msg_wallet_not_found',
-                'message' => 'Wallet not found.'
-            ]);
+            return $this->error(404, 'resp_msg_wallet_not_found', 'Wallet not found.');
         }
 
-        $validated = $request->validate([
+       $validated = $request->validate([
             'name' => 'sometimes|required|string|max:255',
+            'category' => 'sometimes|required|in:cash,bank,e-wallet,credit card,investment,other',
+            'currency' => 'sometimes|required|string|max:3',
+            'initial_balance' => 'sometimes|required|numeric',
             'icon' => 'sometimes|required|string|max:255'
         ]);
 
         $wallet->update($validated);
 
-         return response()->json([
-            'status_code' => 200,
-            'message_code' => 'resp_msg_wallet_updated_successfully',
-            'message' => 'Wallet updated successfully.',
-            'data' => $wallet
-        ]);
+         return $this->success(200, 'resp_msg_wallet_updated_successfully', 'Wallet updated successfully.', $wallet);
     }
 
     /**
@@ -123,11 +100,7 @@ class WalletController extends Controller
         $wallet = Auth::user()->wallets()->find($id);
 
         if (!$wallet) {
-           return response()->json([
-                'status_code' => 404,
-                'message_code' => 'resp_msg_wallet_not_found',
-                'message' => 'Wallet not found.'
-            ]);
+           return $this->error(404, 'resp_msg_wallet_not_found', 'Wallet not found.');
         }
 
         $wallet->delete();
@@ -138,7 +111,7 @@ class WalletController extends Controller
             'message' => 'Wallet deleted successfully.'
         ]);
 
-        return $this->success(200, 'Wallet deleted successfully.');
+        return $this->success(200, 'resp_msg_wallet_deleted_successfully', 'Wallet deleted successfully.');
     }
 }
 
