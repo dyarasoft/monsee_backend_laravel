@@ -12,43 +12,14 @@ class Category extends Model
 
     protected $fillable = [
         'user_id',
-        'parent_id',
         'name',
         'icon',
-        'color',
         'type',
     ];
 
-    /**
-     * Get the user that owns the category.
-     */
     public function user()
     {
         return $this->belongsTo(User::class);
     }
-
-    /**
-     * Get the transactions for the category.
-     */
-    public function transactions()
-    {
-        return $this->hasMany(Transaction::class);
-    }
-
-    /**
-     * Relasi ke Parent Category (Kategori Induk)
-     */
-    public function parent()
-    {
-        return $this->belongsTo(Category::class, 'parent_id');
-    }
-
-    /**
-     * Relasi ke Sub Categories (Anak Kategori)
-     * FUNGSI INI YANG MEMBUAT ERROR JIKA TIDAK ADA
-     */
-    public function subcategories()
-    {
-        return $this->hasMany(Category::class, 'parent_id');
-    }
 }
+
