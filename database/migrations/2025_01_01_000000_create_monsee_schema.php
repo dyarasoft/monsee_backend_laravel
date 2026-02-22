@@ -62,24 +62,25 @@ return new class extends Migration
         });
 
         // 5. Categories (Depends on Users)
-        Schema::create('categories', function (Blueprint $table) {
-            $table->id();
+       Schema::create('categories', function (Blueprint $table) {
+            $table->uuid('id')->primary(); // <-- Ubah menjadi UUID
             $table->foreignId('user_id')->nullable()->constrained()->onDelete('cascade');
-            $table->foreignId('parent_id')->nullable()->constrained('categories')->onDelete('cascade'); 
+            $table->foreignUuid('parent_id')->nullable()->constrained('categories')->onDelete('cascade'); 
             $table->string('name');
             $table->string('icon');
             $table->string('color', 20)->default('#4CAF50');
             $table->enum('type', ['income', 'expense'])->default('expense');
+            $table->integer('sort_order')->default(0);
             $table->timestamps(); 
             $table->softDeletes();
         });
-
+        
         // 6. Transactions (Depends on Users, Wallets, Categories)
         Schema::create('transactions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->foreignId('wallet_id')->constrained()->onDelete('cascade');
-            $table->foreignId('category_id')->constrained()->onDelete('cascade');
+            $table->foreignUuid('category_id')->constrained()->onDelete('cascade');
             
             $table->string('currency', 3)->default('USD');
             $table->enum('type', ['income', 'expense']);

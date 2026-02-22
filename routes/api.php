@@ -61,6 +61,7 @@ Route::prefix('v1')->group(function () {
 
         Route::apiResource('wallets', WalletController::class);
         Route::apiResource('categories', CategoryController::class);
+        Route::post('/categories/sync', [CategoryController::class, 'sync']);
         Route::get('/transactions/recent', [TransactionController::class, 'recent']);
         Route::apiResource('transactions', TransactionController::class)->except(['index']);
         Route::get('transactions', [TransactionController::class, 'index']); 

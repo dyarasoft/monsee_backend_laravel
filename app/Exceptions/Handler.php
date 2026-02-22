@@ -80,5 +80,15 @@ class Handler extends ExceptionHandler
             }
         });
     }
+
+    protected function unauthenticated($request, AuthenticationException $exception)
+    {
+        // Jika request dari API (atau kita paksa untuk semua request jika ini full API)
+        if ($request->expectsJson() || $request->is('api/*')) {
+            return $this->error(401, 'resp_msg_unauthorized', 'Unauthenticated. Please provide a valid token.');
+        }
+
+        return redirect()->guest(route('login'));
+    }
 }
 
